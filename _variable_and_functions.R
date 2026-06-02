@@ -1,20 +1,28 @@
 source("./packages.R")
 
 ### Basic variables ###
+raw.roll <- NULL
+raw.roll$nor <- 1:20
+raw.roll$adv <- sapply(1:20, function(a) { sapply(1:20, function(b) { max(c(a, b)) }) })
+raw.roll$dis <- sapply(1:20, function(a) { sapply(1:20, function(b) { min(c(a, b)) }) })
 test.roll <- NULL
-test.roll$nor <- data.table(Roll = 1:20, Hit.wgt = 1 / 20)
-test.roll$adv <- sapply(1:20, function(a) { sapply(1:20, function(b) { max(c(a, b)) }) }) %>%
-  as.vector() %>%
+test.roll$nor <- data.table(Roll = raw.rolls$nor, Hit.wgt = 1 / 20)
+test.roll$adv <- as.vector(raw.rolls$adv) %>%
   table() %>%
   as.data.table() %>%
   set_names(c("Roll", "Hit.wgt"))
 test.roll$adv[, Hit.wgt := Hit.wgt / sum(Hit.wgt)]
-test.roll$dis <- sapply(1:20, function(a) { sapply(1:20, function(b) { min(c(a, b)) }) }) %>%
-  as.vector() %>%
+test.roll$dis <- as.vector(raw.rolls$dis) %>%
   table() %>%
   as.data.table() %>%
   set_names(c("Roll", "Hit.wgt"))
 test.roll$dis[, Hit.wgt := Hit.wgt / sum(Hit.wgt)]
+
+### Aesthetic Variables ###
+abrevs <- c(adv = "advantage", nor = "normal", dis = "disadvantage")
+type.lvls <- unname(abrevs)
+rollType.colors <- brewer.pal("Set1", n = 9)[c(3, 9, 1)]
+names(rollType.colors) = type.lvls
 
 ### Functions ###
 rep.dmg <- function(dt, rep.num = 1) {

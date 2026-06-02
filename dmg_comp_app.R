@@ -20,35 +20,46 @@ actionUI <- function(id, default_type = "attack") {
       selected = default_type
     ),
     conditionalPanel(
-      "input.actType == 'attack'", ns = ns,
+      "input.actType == 'attack'",
+      ns = ns,
       numericInput(ns("nAtk"), label = "Num. attacks", min = 1, max = 4, value = 1)
     ),
     conditionalPanel(
-      "input.actType == 'save'", ns = ns,
+      "input.actType == 'save'",
+      ns = ns,
       numericInput(ns("nAtk"), label = "Num. targets", min = 1, max = 10, value = 1)
     ),
     conditionalPanel(
-      "input.actType == 'attack'", ns = ns,
-      selectInput(ns("rollType"), label = "Roll type",
-                  choices = c("normal", "advantage", "disadvantage"))
+      "input.actType == 'attack'",
+      ns = ns,
+      selectInput(ns("rollType"),
+                  label = "Roll type",
+                  choices = c("normal", "advantage", "disadvantage")
+      )
     ),
     conditionalPanel(
-      "input.actType == 'save'", ns = ns,
-      selectInput(ns("rollType"), label = "Target's roll type",
-                  choices = c("normal", "advantage", "disadvantage"))
+      "input.actType == 'save'",
+      ns = ns,
+      selectInput(ns("rollType"),
+                  label = "Target's roll type",
+                  choices = c("normal", "advantage", "disadvantage")
+      )
     ),
     conditionalPanel(
-      "input.actType == 'attack'", ns = ns,
+      "input.actType == 'attack'",
+      ns = ns,
       numericInput(ns("atkBns"), label = "Attack modifier", value = 0)
     ),
     conditionalPanel(
-      "input.actType == 'save'", ns = ns,
+      "input.actType == 'save'",
+      ns = ns,
       numericInput(ns("saveDC"), label = "Save DC", value = 10)
     ),
     textInput(ns("dmgDice"), label = "Damage dice", placeholder = "e.g. 2d6"),
     numericInput(ns("dmgBns"), label = "Damage bonus", value = 0),
     conditionalPanel(
-      "input.actType == 'save'", ns = ns,
+      "input.actType == 'save'",
+      ns = ns,
       selectInput(ns("DmgOnSave"), label = "Damage on save", choices = c("half", "none"))
     )
   )
@@ -97,12 +108,12 @@ ui <- page_sidebar(
   sidebar = sidebar(
     width = 360,
     accordion(
-      open     = c("Settings", "Action A", "Action B"),
+      open = c("Settings", "Action A", "Action B"),
       multiple = TRUE,
       accordion_panel(
         "Settings",
         icon = bs_icon("sliders"),
-        sliderInput("targetAC",   label = "Target AC:",       min = 0,  max = 25, value = c(8, 18), step = 1),
+        sliderInput("targetAC", label = "Target AC:", min = 0, max = 25, value = c(8, 18), step = 1),
         sliderInput("targetSave", label = "Target save mod:", min = -5, max = 15, value = c(0, 10), step = 1)
       ),
       accordion_panel(
@@ -151,13 +162,15 @@ ui <- page_sidebar(
 server <- function(input, output, session) {
   thematic::thematic_shiny()
 
-  ac.range       <- reactive(input$targetAC[1]:input$targetAC[2])
+  ac.range <- reactive(input$targetAC[1]:input$targetAC[2])
   save.bns.range <- reactive(input$targetSave[1]:input$targetSave[2])
 
   tblA <- actionServer("actA", ac.range, save.bns.range)
   tblB <- actionServer("actB", ac.range, save.bns.range)
 
-  all.dmg <- reactive({ rbind(tblA(), tblB()) })
+  all.dmg <- reactive({
+    rbind(tblA(), tblB())
+  })
 
   all.stats <- reactive({
     rbind(
@@ -187,14 +200,18 @@ server <- function(input, output, session) {
     )
   })
 
-  expected.dt <- reactive({ merge(expected(), names.dt(), by = "Action") })
-  grid.dt     <- reactive({ expected()[, .(Target.AC, Target.save)] %>% unique() })
+  expected.dt <- reactive({
+    merge(expected(), names.dt(), by = "Action")
+  })
+  grid.dt <- reactive({
+    expected()[, .(Target.AC, Target.save)] %>% unique()
+  })
 
   output$gridPlot <- renderPlot({
     lapply(1:nrow(grid.dt()), function(r) {
-      cell    <- expected.dt()[Target.AC == grid.dt()[r]$Target.AC & Target.save == grid.dt()[r]$Target.save]
+      cell <- expected.dt()[Target.AC == grid.dt()[r]$Target.AC & Target.save == grid.dt()[r]$Target.save]
       max_dmg <- max(cell$Expected.dmg)
-      best    <- cell[Expected.dmg == max_dmg]
+      best <- cell[Expected.dmg == max_dmg]
       data.table(
         Target.AC    = grid.dt()[r]$Target.AC,
         Target.save  = grid.dt()[r]$Target.save,
@@ -211,8 +228,8 @@ server <- function(input, output, session) {
       scale_y_continuous(breaks = input$targetSave[1]:input$targetSave[2]) +
       coord_equal() +
       labs(
-        x       = "Target AC",
-        y       = "Target save mod",
+        x = "Target AC",
+        y = "Target save mod",
         caption = c(
           names.dt()[order(Short.lab), paste(Short.lab, Action, sep = ": ")],
           "\nClick on a cell to see the damage distribution."
@@ -224,23 +241,27 @@ server <- function(input, output, session) {
   clickVals <- reactiveValues(AC = NA, Mod = NA)
 
   # Reset selection when the target grid changes
-  observeEvent(list(input$targetAC, input$targetSave), {
-    clickVals$AC  <- NA
-    clickVals$Mod <- NA
-  }, ignoreInit = TRUE)
+  observeEvent(
+    list(input$targetAC, input$targetSave),
+    {
+      clickVals$AC <- NA
+      clickVals$Mod <- NA
+    },
+    ignoreInit = TRUE
+  )
 
   # Default to the best cell on first render
   observe({
     req(nrow(expected.dt()) > 0)
     if (is.na(clickVals$AC)) {
-      best          <- expected.dt()[which.max(Expected.dmg)]
-      clickVals$AC  <- best$Target.AC
+      best <- expected.dt()[which.max(Expected.dmg)]
+      clickVals$AC <- best$Target.AC
       clickVals$Mod <- best$Target.save
     }
   })
 
   observeEvent(input$gridPlot_click, {
-    clickVals$AC  <- round(input$gridPlot_click$x, 0)
+    clickVals$AC <- round(input$gridPlot_click$x, 0)
     clickVals$Mod <- round(input$gridPlot_click$y, 0)
   })
 
@@ -248,7 +269,8 @@ server <- function(input, output, session) {
     if (is.na(clickVals$AC) || is.na(clickVals$Mod)) {
       ggplot() +
         annotate(
-          "text", x = 0.5, y = 0.5,
+          "text",
+          x = 0.5, y = 0.5,
           label = "Fill in both actions to see\nthe damage distribution.",
           size = 5, color = "grey60", hjust = 0.5, vjust = 0.5
         ) +
@@ -264,7 +286,9 @@ server <- function(input, output, session) {
         ) +
         scale_x_discrete(limits = names.dt()[order(Short.lab)]$Action) +
         scale_color_brewer(palette = "Dark2") +
-        geom_errorbar(aes(width = {Wgt / max(Wgt)} * 0.9)) +
+        geom_errorbar(aes(width = {
+          Wgt / max(Wgt)
+        } * 0.9)) +
         scale_alpha_continuous(name = "Probability") +
         labs(
           y        = "Damage",
@@ -300,10 +324,10 @@ server <- function(input, output, session) {
         )
       ]
     },
-    digits  = 2,
+    digits = 2,
     striped = TRUE,
-    hover   = TRUE,
-    width   = "100%"
+    hover = TRUE,
+    width = "100%"
   )
 }
 

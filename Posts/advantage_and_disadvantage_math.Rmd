@@ -1,0 +1,51 @@
+---
+title: "advantage_and_disadvantage_math"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+source("./packages.R")
+source("./variable_and_functions.R")
+
+# Data
+roll.list <- copy(test.roll)
+for (abrev in names(abrevs)) {
+  roll.list[[abrev]][, Type := abrevs[abrev]]
+}
+dt <- rbindlist(roll.list)
+dt[, Roll := as.integer(Roll)]
+dt[, Type := factor(Type, levels = type.lvls)]
+means <- sapply(raw.roll, mean)
+medians <- sapply(raw.roll, median)
+avg.dt <- data.table(
+  Value = c(means, medians),
+  Average = c(rep("Mean", length(means)), rep("Median", length(medians))),
+  Type = factor(c(abrevs[names(means)], abrevs[names(medians)]), levels = type.lvls)
+)
+
+# Aesthetics
+# 
+```
+
+
+```{r}
+ggplot(dt, aes(x = Roll, y = Hit.wgt)) + 
+  geom_col(aes(fill = Type), position = "dodge", alpha = 0.25, color = NA) +
+  geom_vline(
+    data = avg.dt, 
+    aes(xintercept = Value, color = Type, linetype = Average), 
+    size = 1, 
+    alpha = 0.75
+  ) +
+  scale_y_continuous(expand = c(0, 0), n.breaks = 10, limits = c(0, 0.1)) +
+  scale_x_continuous(breaks = 1:20, expand = c(0, 0)) +
+  scale_fill_manual(name = "Roll type", values = rollType.colors) +
+  scale_color_manual(name = "Roll type", values = rollType.colors) +
+  theme(legend.position = "top") +
+  labs(x = "d20 Roll", y = "Chance")
+```
+
+```{r}
+
+```
+
