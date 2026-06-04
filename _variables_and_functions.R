@@ -1,4 +1,15 @@
-source("./packages.R")
+source("./_packages_and_environments.R")
+
+### Housekeeping ###
+dirs <- list(
+  figs = "Figures",
+  posts = "Posts",
+  data = "Data",
+  temp = "Temp"
+)
+for (dir in dirs) {
+  if (!dir.exists(dir)) { dir.create(dir) }
+}
 
 ### Basic variables ###
 raw.roll <- NULL
@@ -6,23 +17,28 @@ raw.roll$nor <- 1:20
 raw.roll$adv <- sapply(1:20, function(a) { sapply(1:20, function(b) { max(c(a, b)) }) })
 raw.roll$dis <- sapply(1:20, function(a) { sapply(1:20, function(b) { min(c(a, b)) }) })
 test.roll <- NULL
-test.roll$nor <- data.table(Roll = raw.rolls$nor, Hit.wgt = 1 / 20)
-test.roll$adv <- as.vector(raw.rolls$adv) %>%
+test.roll$nor <- data.table(Roll = raw.roll$nor, Hit.wgt = 1 / 20)
+test.roll$adv <- as.vector(raw.roll$adv) %>%
   table() %>%
   as.data.table() %>%
   set_names(c("Roll", "Hit.wgt"))
 test.roll$adv[, Hit.wgt := Hit.wgt / sum(Hit.wgt)]
-test.roll$dis <- as.vector(raw.rolls$dis) %>%
+test.roll$dis <- as.vector(raw.roll$dis) %>%
   table() %>%
   as.data.table() %>%
   set_names(c("Roll", "Hit.wgt"))
 test.roll$dis[, Hit.wgt := Hit.wgt / sum(Hit.wgt)]
 
 ### Aesthetic Variables ###
-abrevs <- c(adv = "advantage", nor = "normal", dis = "disadvantage")
-type.lvls <- unname(abrevs)
-rollType.colors <- brewer.pal("Set1", n = 9)[c(3, 9, 1)]
-names(rollType.colors) = type.lvls
+rollType.abrevs <- c(adv = "advantage", nor = "normal", dis = "disadvantage")
+rollType.lvls <- unname(rollType.abrevs)
+rollType.colors <- c(brewer.pal("YlOrRd", n = 9)[3], "white", brewer.pal("Blues", n = 9)[8])
+names(rollType.colors) = rollType.lvls
+
+hitType.abrevs <- c(suc = "critical success", reg = "regular", fai = "critical fail")
+hitType.lvls <- unname(hitType.abrevs)
+hitType.colors <- brewer.pal("Set1", n = 9)[c(3, 9, 1)]
+names(hitType.colors) = hitType.lvls
 
 ### Functions ###
 rep.dmg <- function(dt, rep.num = 1) {
@@ -201,4 +217,10 @@ action.sim <- function(
     rbindlist() %>%
     .[, `:=`(Action = name, Type = type)] %>%
     return()
+}
+
+create.fig.dir <- function(x) {
+  dir.name <- file.path(dirs$figs, paste0("Post", str_pad(x, width = 4, pad = 0)))
+  if (!dir.exists(dir.name)) { dir.create(dir.name) }
+  return(dir.name)
 }

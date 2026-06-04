@@ -4,8 +4,12 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-source("./packages.R")
-source("./variable_and_functions.R")
+source("./_packages_and_environments.R")
+source("./_variables_and_functions.R")
+
+# Housekeeping
+post.num <- tracker$posts[basename2(this.path())]$Post.num
+fig.dir <- create.fig.dir(post.num)
 
 # Data
 roll.list <- copy(test.roll)
@@ -34,7 +38,7 @@ ggplot(dt, aes(x = Roll, y = Hit.wgt)) +
   geom_vline(
     data = avg.dt, 
     aes(xintercept = Value, color = Type, linetype = Average), 
-    size = 1, 
+    linewidth = 1, 
     alpha = 0.75
   ) +
   scale_y_continuous(expand = c(0, 0), n.breaks = 10, limits = c(0, 0.1)) +

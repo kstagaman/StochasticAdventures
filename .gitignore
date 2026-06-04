@@ -48,3 +48,8 @@ po/*~
 # RStudio Connect folder
 rsconnect/
 .positai
+
+# Other
+Temp/*
+Data/*
+*.rda
