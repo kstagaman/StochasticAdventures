@@ -286,9 +286,7 @@ server <- function(input, output, session) {
         ) +
         scale_x_discrete(limits = names.dt()[order(Short.lab)]$Action) +
         scale_color_brewer(palette = "Dark2") +
-        geom_errorbar(aes(width = {
-          Wgt / max(Wgt)
-        } * 0.9)) +
+        geom_errorbar(aes(width = {Wgt / max(Wgt)} * 0.9)) +
         scale_alpha_continuous(name = "Probability") +
         labs(
           y        = "Damage",

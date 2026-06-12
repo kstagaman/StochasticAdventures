@@ -10,21 +10,22 @@ source("./_variables_and_functions.R")
 # Housekeeping
 post.num <- tracker$posts[basename2(this.path())]$Post.num
 fig.dir <- create.fig.dir(post.num)
+ability.gen <- "Standard Array"
 
 # Data
 roll.list <- copy(test.roll)
-for (abrev in names(abrevs)) {
-  roll.list[[abrev]][, Type := abrevs[abrev]]
+for (abrev in names(rollType.abrevs)) {
+  roll.list[[abrev]][, Type := rollType.abrevs[abrev]]
 }
 dt <- rbindlist(roll.list)
 dt[, Roll := as.integer(Roll)]
-dt[, Type := factor(Type, levels = type.lvls)]
+dt[, Type := factor(Type, levels = rollType.lvls)]
 means <- sapply(raw.roll, mean)
 medians <- sapply(raw.roll, median)
 avg.dt <- data.table(
   Value = c(means, medians),
   Average = c(rep("Mean", length(means)), rep("Median", length(medians))),
-  Type = factor(c(abrevs[names(means)], abrevs[names(medians)]), levels = type.lvls)
+  Type = factor(c(rollType.abrevs[names(means)], rollType.abrevs[names(medians)]), levels = rollType.lvls)
 )
 
 # Aesthetics
@@ -50,6 +51,33 @@ ggplot(dt, aes(x = Roll, y = Hit.wgt)) +
 ```
 
 ```{r}
+ac.range <- 8:18
+pc.lvl <- 3
+atk.mod <- primary.attack.bonus(level = pc.lvl, ability.gen.method = ability.gen)
+dmg.mod <- primary.attack.mod(level = pc.lvl, ability.gen.method = ability.gen)
 
+plot.dt <- lapply(rollType.lvls, function(type) {
+  lapply(ac.range, function(ac) {
+    res.dt <- make.attack(
+      roll.type = type, 
+      AC = ac, 
+      atk.bns = atk.mod, 
+      dmg.dice = "1d8", 
+      dmg.bns = dmg.mod, 
+      by.hitType = TRUE
+    )
+    res.dt[, `:=`(Target.AC.min.atkBns = {ac - atk.bns}, Roll.type = type)]
+    return(res.dt)
+  }) %>% rbindlist()
+}) %>% rbindlist()
+plot.dt[
+  , `:=`(
+    Hit.type = as.factor(Hit.type, levels = hitType.lvls), 
+    Roll.type = as.factor(Roll.type, levels = rollType.lvls))
+]
+ggplot(plot.dt, aes(x = Target.AC.min.atkBns, ymin = Dmg, ymax = Dmg)) +
+  geom_errorbar(aes(width = {Wgt / max(Wgt)} * 0.9, color = Hit.type), position = "dodge") +
+  scale_color_manual(values = hitType.colors)
+  
 ```
 

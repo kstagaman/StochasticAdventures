@@ -22,20 +22,53 @@ test.roll$adv <- as.vector(raw.roll$adv) %>%
   table() %>%
   as.data.table() %>%
   set_names(c("Roll", "Hit.wgt"))
-test.roll$adv[, Hit.wgt := Hit.wgt / sum(Hit.wgt)]
+test.roll$adv[, `:=`(Roll = as.integer(Roll), Hit.wgt = Hit.wgt / sum(Hit.wgt))]
 test.roll$dis <- as.vector(raw.roll$dis) %>%
   table() %>%
   as.data.table() %>%
   set_names(c("Roll", "Hit.wgt"))
-test.roll$dis[, Hit.wgt := Hit.wgt / sum(Hit.wgt)]
+test.roll$dis[, `:=`(Roll = as.integer(Roll), Hit.wgt = Hit.wgt / sum(Hit.wgt))]
+
+ability.gen.methods <- list(
+  gen1 = data.table(
+    Method = "Standard Array",
+    Level = 1:20,
+    A1 = c(17, 17, 17, 18, 18, 18, 18, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20),
+    A2 = c(15, 15, 15, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 18, 18, 18, 18, 18),
+    A3 = c(13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 14, 14, 14, 14, 14, 14, 14, 14, 14),
+    A4 = c(12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12),
+    A5 = c(10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10),
+    A6 = c( 8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8)
+  ),
+  gen2 = data.table(
+    Method = "Point Buy",
+    Level = 1:20,
+    A1 = c(17, 17, 17, 18, 18, 18, 18, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20),
+    A2 = c(16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 18, 18, 18, 18, 20, 20, 20, 20, 20),
+    A3 = c(13, 13, 13, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14),
+    A4 = c(10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10),
+    A5 = c(10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10),
+    A6 = c( 8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8)
+  )
+)
+abilities <- rbindlist(ability.gen.methods)
+abilities[, Prof.bonus := rep(as.vector(sapply(2:6, rep, 4)), length(ability.gen.methods))]
+abilities %<>% cbind(
+  lapply(abilities[, paste0("A", 1:6), with = F], function(x) {
+    floor({x - 10} / 2)
+  }) %>%
+    as.data.table() %>%
+    set_names(paste0("A", 1:6, ".mod"))
+)
+
 
 ### Aesthetic Variables ###
 rollType.abrevs <- c(adv = "advantage", nor = "normal", dis = "disadvantage")
 rollType.lvls <- unname(rollType.abrevs)
-rollType.colors <- c(brewer.pal("YlOrRd", n = 9)[3], "white", brewer.pal("Blues", n = 9)[8])
+rollType.colors <- c(brewer.pal("YlOrRd", n = 9)[4], "white", brewer.pal("Blues", n = 9)[8])
 names(rollType.colors) = rollType.lvls
 
-hitType.abrevs <- c(suc = "critical success", reg = "regular", fai = "critical fail")
+hitType.abrevs <- c(suc = "crit. hit", reg = "regular", fai = "crit. miss")
 hitType.lvls <- unname(hitType.abrevs)
 hitType.colors <- brewer.pal("Set1", n = 9)[c(3, 9, 1)]
 names(hitType.colors) = hitType.lvls
@@ -112,9 +145,10 @@ parse.dmg.dice <- function(dmg.str) {
 make.attack <- function(
     roll.type = c("normal", "advantage", "disadvantage"),
     AC = 14,
-    atk.bns = 3,
+    atk.bns = 5,
     dmg.dice = "1d6",
-    dmg.bns = 3
+    dmg.bns = 3,
+    by.hitType = FALSE
 ) {
   roll.type <- rlang::arg_match(roll.type, c("normal", "advantage", "disadvantage"))
   rt <- strtrim(roll.type, 3)
@@ -127,16 +161,38 @@ make.attack <- function(
     , Wgt := sum(test.roll[[rt]][Roll + atk.bns >= AC & !{Roll %in% c(1, 20)}]$Hit.wgt) * Dmg.wgt
   ]
   crit.dt[, Wgt := sum(test.roll[[rt]][Roll == 20]$Hit.wgt) * Dmg.wgt]
-  all.dmg.dt <- rbind(
-    data.table(
-      Dmg = 0,
-      Dmg.wgt = NA,
-      Wgt = sum(test.roll[[rt]][Roll + atk.bns < AC | Roll == 1]$Hit.wgt)
-    ),
-    dmg.dt[, Dmg := Dmg + dmg.bns],
-    crit.dt[, Dmg := Dmg + dmg.bns]
-  ) %>%
-    .[, .(Wgt = sum(Wgt)), by = "Dmg"]
+
+  if (by.hitType) {
+    all.dmg.dt <- rbind(
+      data.table(
+        Dmg = 0,
+        Dmg.wgt = NA,
+        Wgt = sum(test.roll[[rt]][Roll + atk.bns < AC]$Hit.wgt),
+        Hit.type = "regular"
+      ),
+      data.table(
+        Dmg = 0,
+        Dmg.wgt = NA,
+        Wgt = sum(test.roll[[rt]][Roll == 1]$Hit.wgt),
+        Hit.type = "crit. miss"
+      ),
+      dmg.dt[, `:=`(Dmg = {Dmg + dmg.bns}, Hit.type = "regular")],
+      crit.dt[, `:=`(Dmg = {Dmg + dmg.bns}, Hit.type = "crit. hit")]
+    ) %>%
+      .[, .(Wgt = sum(Wgt)), by = c("Hit.type", "Dmg")]
+
+  } else {
+    all.dmg.dt <- rbind(
+      data.table(
+        Dmg = 0,
+        Dmg.wgt = NA,
+        Wgt = sum(test.roll[[rt]][Roll + atk.bns < AC | Roll == 1]$Hit.wgt)
+      ),
+      dmg.dt[, Dmg := Dmg + dmg.bns],
+      crit.dt[, Dmg := Dmg + dmg.bns]
+    ) %>%
+      .[, .(Wgt = sum(Wgt)), by = "Dmg"]
+  }
   return(all.dmg.dt)
 }
 
@@ -223,4 +279,64 @@ create.fig.dir <- function(x) {
   dir.name <- file.path(dirs$figs, paste0("Post", str_pad(x, width = 4, pad = 0)))
   if (!dir.exists(dir.name)) { dir.create(dir.name) }
   return(dir.name)
+}
+
+primary.attack.bonus <- function(level, ability.gen.method = c("Standard Array", "Point Buy")) {
+  ability.gen.method <- arg_match(ability.gen.method, values = c("Standard Array", "Point Buy"))
+  if (!is_integerish(level, n = 1) || level < 1 || level > 20) {
+    abort(
+      message = c(
+        "x" = paste("`level` must be a single integer between 1 and 20, inclusive."),
+        "i" = paste0("You supplied a value of type <", typeof(level), "> with value: ", level)
+      ),
+      class = "error_invalid_range"
+    )
+  }
+  abilities[Level == level & Method == ability.gen.method, .(Res = A1.mod + Prof.bonus)]$Res %>%
+    return()
+}
+
+secondary.attack.bonus <- function(level, ability.gen.method = c("Standard Array", "Point Buy")) {
+  ability.gen.method <- arg_match(ability.gen.method, values = c("Standard Array", "Point Buy"))
+  if (!is_integerish(level, n = 1) || level < 1 || level > 20) {
+    abort(
+      message = c(
+        "x" = paste("`level` must be a single integer between 1 and 20, inclusive."),
+        "i" = paste0("You supplied a value of type <", typeof(level), "> with value: ", level)
+      ),
+      class = "error_invalid_range"
+    )
+  }
+  abilities[Level == level & Method == ability.gen.method, .(Res = A2.mod + Prof.bonus)]$Res %>%
+    return()
+}
+
+primary.attack.mod <- function(level, ability.gen.method = c("Standard Array", "Point Buy")) {
+  ability.gen.method <- arg_match(ability.gen.method, values = c("Standard Array", "Point Buy"))
+  if (!is_integerish(level, n = 1) || level < 1 || level > 20) {
+    abort(
+      message = c(
+        "x" = paste("`level` must be a single integer between 1 and 20, inclusive."),
+        "i" = paste0("You supplied a value of type <", typeof(level), "> with value: ", level)
+      ),
+      class = "error_invalid_range"
+    )
+  }
+  abilities[Level == level & Method == ability.gen.method]$A1.mod %>%
+    return()
+}
+
+secondary.attack.mod <- function(level, ability.gen.method = c("Standard Array", "Point Buy")) {
+  ability.gen.method <- arg_match(ability.gen.method, values = c("Standard Array", "Point Buy"))
+  if (!is_integerish(level, n = 1) || level < 1 || level > 20) {
+    abort(
+      message = c(
+        "x" = paste("`level` must be a single integer between 1 and 20, inclusive."),
+        "i" = paste0("You supplied a value of type <", typeof(level), "> with value: ", level)
+      ),
+      class = "error_invalid_range"
+    )
+  }
+  abilities[Level == level & Method == ability.gen.method]$A2.mod %>%
+    return()
 }

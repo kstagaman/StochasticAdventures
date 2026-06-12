@@ -1,3 +1,4 @@
+library(rlang)
 library(this.path)
 library(shiny)
 library(bslib)
@@ -10,6 +11,8 @@ library(cowplot)
 library(ggbeeswarm)
 library(RColorBrewer)
 library(ggstats)
+library(purrr)
+
 # library(ffbase)
 theme_set(theme_cowplot())
 
