@@ -1,17 +1,32 @@
+### Housekeeping ###
+base.dir <- "C:/Users/kstag/OneDrive/Documents/GitHub/StochasticAdventures"
+dirs <- list(
+  figs = file.path(base.dir, "Figures"),
+  posts = file.path(base.dir, "Posts"),
+  data = file.path(base.dir, "Data"),
+  temp = file.path(base.dir, "Temp")
+)
+for (dir in dirs) {
+  if (!dir.exists(dir)) { dir.create(dir) }
+}
+
+library(autoNumCaptions)
+library(RColorBrewer)
+library(grid)
 library(rlang)
 library(this.path)
 library(shiny)
 library(bslib)
 library(bsicons)
-library(data.table)
 library(magrittr)
 library(stringr)
 library(ggplot2)
 library(cowplot)
 library(ggbeeswarm)
-library(RColorBrewer)
 library(ggstats)
+library(patchwork)
 library(purrr)
+library(data.table)
 
 # library(ffbase)
 theme_set(theme_cowplot())
@@ -19,15 +34,17 @@ theme_set(theme_cowplot())
 my.theme <- theme_update(
   legend.position = "top",
   legend.box.just = "left",
-  legend.text = element_text(size = 8),
-  legend.title = element_text(size = 10),
+  legend.text = element_text(size = 7),
+  legend.title = element_text(size = 9),
   legend.justification = "left",
   legend.key.size = unit(0.7, "line"),
-  plot.caption = element_text(hjust = 0, size = 8)
+  plot.caption = element_text(hjust = 0, size = 8),
+  axis.text = element_text(size = 8),
+  axis.title = element_text(size = 10)
 )
 
-if (file.exists("tracker.rda")) {
-  load("tracker.rda")
+if (file.exists(file.path(base.dir, "tracker.rda"))) {
+  load(file.path(base.dir, "tracker.rda"))
 } else {
   tracker <- new.env()
   tracker$posts <- data.table()
@@ -44,4 +61,4 @@ if (length(post.files) > nrow(tracker$posts)) {
   setkey(tracker$posts, Post.file)
 }
 
-save(tracker, file = "tracker.rda")
+save(tracker, file = file.path(base.dir, "tracker.rda"))

@@ -4,13 +4,21 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-source("./_packages_and_environments.R")
-source("./_variables_and_functions.R")
+source("C:/Users/kstag/OneDrive/Documents/GitHub/StochasticAdventures/_packages_and_environments.R")
+source("C:/Users/kstag/OneDrive/Documents/GitHub/StochasticAdventures/_variables_and_functions.R")
 
 # Housekeeping
 post.num <- tracker$posts[basename2(this.path())]$Post.num
 fig.dir <- create.fig.dir(post.num)
+knitr::opts_chunk$set(results = "asis", echo = FALSE, warning = FALSE, message = FALSE)
+
+# Inputs
+pc.lvl <- 3
 ability.gen <- "Standard Array"
+exmpl.dmg.dice <- "1d8"
+atk.mod <- primary.attack.bonus(level = pc.lvl, ability.gen.method = ability.gen)
+dmg.mod <- primary.attack.mod(level = pc.lvl, ability.gen.method = ability.gen)
+ac.range <- {atk.mod + 1}:{20 + atk.mod}
 
 # Data
 roll.list <- copy(test.roll)
@@ -29,12 +37,34 @@ avg.dt <- data.table(
 )
 
 # Aesthetics
-# 
+rawRoll.label <- "Target AC - Attack Bonus (i.e., raw d20 roll required to hit)"
+img.wd <- 8
+img.ht <- 6
+img.dpi <- 300
+save.fig <- function(plot, f, wd.mult = 1, ht.mult = 1) { 
+  ggsave(
+    plot = plot, 
+    filename = f, 
+    width = {img.wd * wd.mult}, 
+    height = {img.ht * ht.mult}, 
+    dpi = img.dpi
+  )
+}
 ```
 
+```{r testing, eval=FALSE}
+library(this.path)
+# print(here())
+# print(this.path())
+print(basename2(this.path()))
+knitr::opts_chunk$set(eval = FALSE)
+```
 
-```{r}
-ggplot(dt, aes(x = Roll, y = Hit.wgt)) + 
+```{r raw-roll}
+fig.file <- file.path(fig.dir, "raw_rolls_by_rollType.png")
+cap.txt <- "Chance of raw d20 result based on rolling with advantage, normally, or with disadvantage."
+{
+  ggplot(dt, aes(x = Roll, y = Hit.wgt)) + 
   geom_col(aes(fill = Type), position = "dodge", alpha = 0.25, color = NA) +
   geom_vline(
     data = avg.dt, 
@@ -48,13 +78,16 @@ ggplot(dt, aes(x = Roll, y = Hit.wgt)) +
   scale_color_manual(name = "Roll type", values = rollType.colors) +
   theme(legend.position = "top") +
   labs(x = "d20 Roll", y = "Chance")
+} %>% save.fig(f = fig.file, ht.mult = 0.8)
+
+make.inline.fig(fig.file, cap.txt)
 ```
 
-```{r}
-ac.range <- 8:18
-pc.lvl <- 3
-atk.mod <- primary.attack.bonus(level = pc.lvl, ability.gen.method = ability.gen)
-dmg.mod <- primary.attack.mod(level = pc.lvl, ability.gen.method = ability.gen)
+```{r expected-dmg-distribution}
+fig.file <- file.path(fig.dir, "damage_dist_by_rollType_and_hitType.png")
+cap.txt <- paste0(
+  "Examples of damage distributions for two raw d20 rolls (5 & 15) by roll type (advantage/normal/disadvantage) and hit type (crit. hit/regular/crit. miss) for a level ", pc.lvl, " character with a weapon that deals ", exmpl.dmg.dice, "+", dmg.mod, " damage."
+)
 
 plot.dt <- lapply(rollType.lvls, function(type) {
   lapply(ac.range, function(ac) {
@@ -62,22 +95,96 @@ plot.dt <- lapply(rollType.lvls, function(type) {
       roll.type = type, 
       AC = ac, 
       atk.bns = atk.mod, 
-      dmg.dice = "1d8", 
+      dmg.dice = exmpl.dmg.dice, 
       dmg.bns = dmg.mod, 
       by.hitType = TRUE
     )
-    res.dt[, `:=`(Target.AC.min.atkBns = {ac - atk.bns}, Roll.type = type)]
+    res.dt[, `:=`(Raw.roll = {ac - atk.mod}, Roll.type = type)]
     return(res.dt)
   }) %>% rbindlist()
 }) %>% rbindlist()
 plot.dt[
   , `:=`(
-    Hit.type = as.factor(Hit.type, levels = hitType.lvls), 
-    Roll.type = as.factor(Roll.type, levels = rollType.lvls))
+    Hit.type = factor(Hit.type, levels = hitType.lvls),
+    Roll.type = factor(Roll.type, levels = rollType.lvls))
 ]
-ggplot(plot.dt, aes(x = Target.AC.min.atkBns, ymin = Dmg, ymax = Dmg)) +
-  geom_errorbar(aes(width = {Wgt / max(Wgt)} * 0.9, color = Hit.type), position = "dodge") +
-  scale_color_manual(values = hitType.colors)
-  
+
+stats.dt <- plot.dt[, .(Mean = weighted.mean(Dmg, Wgt)), by = c("Roll.type", "Raw.roll")]
+
+{
+  ggplot(plot.dt[Raw.roll %in% c(5, 15)], aes(y = Roll.type, x = Wgt)) + 
+    geom_col(aes(fill = Hit.type, color = Roll.type), linewidth = 0.2) +
+    facet_grid(Dmg ~ Raw.roll, as.table = FALSE, switch = "y") +
+    scale_fill_manual(name = "Hit type", values = hitType.colors) +
+    scale_color_manual(name = "Roll type", values = rollType.colors) +
+    scale_y_discrete(limits = rev) +
+    scale_x_continuous(sec.axis = sec_axis(~ . , name = rawRoll.label, breaks = NULL, labels = NULL)) +
+    theme(
+      axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5),
+      axis.text.y = element_blank(), 
+      axis.ticks.y = element_blank(), 
+      axis.line.y = element_blank(),
+      strip.text.y.left = element_text(angle = 0, size = get_theme()$axis.text@size),
+      strip.background.y = element_blank(),
+    ) +
+    labs(x = "Chance", y = "Damage")
+} %>% save.fig(f = fig.file, wd.mult = 1.2, ht.mult = 1.6)
+
+make.inline.fig(fig.file, cap.txt)
+```
+
+```{r mean-expected-damage}
+fig.file <- file.path(fig.dir, "mean_expected_dmg_and_diffs_by_rollType.png")
+cap.txt <- paste0(
+  "(A) Mean expected damage for a level ", pc.lvl, " character with a weapon dealing ", exmpl.dmg.dice, "+", dmg.mod, " damage by raw d20 roll and roll type (advantage/normal/disadvantage). (B) Differences in expected mean damage for advantage and disadvantage rolls relative to normal rolls."
+)
+
+mean.p <- ggplot(stats.dt, aes(x = Raw.roll, y = Mean, color = Roll.type)) +
+  geom_line() +
+  geom_point() +
+  scale_x_continuous(
+    n.breaks = length(unique(stats.dt$Raw.roll)), 
+    expand = expansion(mult = 0.02, add = 0)
+  ) +
+  scale_y_continuous(breaks = 0:{ceiling(max(stats.dt$Mean))}) +
+  labs(
+    x = rawRoll.label, 
+    y = paste0("Mean expected damage (1d8+", dmg.mod, ")")
+  ) +
+  scale_color_manual(name = "Roll type", values = rollType.colors) +
+  background_grid(major = "y", minor = "y") +
+  theme(axis.title.x = element_blank())
+
+diff.dt <- merge(
+  stats.dt[Roll.type == "advantage", -1], 
+  stats.dt[Roll.type == "normal", -1], 
+  by = "Raw.roll"
+) %>% 
+  merge(stats.dt[Roll.type == "disadvantage", -1], by = "Raw.roll") %>% 
+  set_names(c("Raw.roll", "Mean.adv", "Mean.nor", "Mean.dis"))
+
+diff.dt[, `:=`(Diff.adv.nor = Mean.adv - Mean.nor, Diff.dis.nor = Mean.dis - Mean.nor)]
+
+diff.p <- melt(diff.dt, id.vars = "Raw.roll", measure.vars = c("Diff.adv.nor", "Diff.dis.nor")) %>% 
+  ggplot(aes(x = Raw.roll, y = value, fill = variable)) +
+  geom_col(show.legend = FALSE) +
+  scale_x_continuous(n.breaks = length(unique(stats.dt$Raw.roll)), expand = expansion(0, 0)) +
+  scale_fill_manual(
+    name = "Roll type", 
+    labels = c("advantage", "disadvantage"), 
+    values = unname(rollType.colors[c(1, 3)])) +
+  background_grid(major = "y", minor = "y") +
+  labs(
+    x = rawRoll.label, 
+    y = paste("Difference in\nexpected mean damage (1d8+", dmg.mod, ")\nrelative to a normal roll")
+  )
+
+{
+  {mean.p / diff.p} + 
+    plot_annotation(tag_levels = "A") +
+    plot_layout(heights = c(2, 1))
+} %>% save.fig(f = fig.file, ht.mult = 1.5)
+
+make.inline.fig(fig.file, cap.txt)
 ```
 

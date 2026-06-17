@@ -1,15 +1,4 @@
-source("./_packages_and_environments.R")
-
-### Housekeeping ###
-dirs <- list(
-  figs = "Figures",
-  posts = "Posts",
-  data = "Data",
-  temp = "Temp"
-)
-for (dir in dirs) {
-  if (!dir.exists(dir)) { dir.create(dir) }
-}
+source("C:/Users/kstag/OneDrive/Documents/GitHub/StochasticAdventures/_packages_and_environments.R")
 
 ### Basic variables ###
 raw.roll <- NULL
@@ -65,7 +54,7 @@ abilities %<>% cbind(
 ### Aesthetic Variables ###
 rollType.abrevs <- c(adv = "advantage", nor = "normal", dis = "disadvantage")
 rollType.lvls <- unname(rollType.abrevs)
-rollType.colors <- c(brewer.pal("YlOrRd", n = 9)[4], "white", brewer.pal("Blues", n = 9)[8])
+rollType.colors <- c(brewer.pal("YlOrRd", n = 9)[4], "black", brewer.pal("Blues", n = 9)[8])
 names(rollType.colors) = rollType.lvls
 
 hitType.abrevs <- c(suc = "crit. hit", reg = "regular", fai = "crit. miss")
@@ -167,7 +156,7 @@ make.attack <- function(
       data.table(
         Dmg = 0,
         Dmg.wgt = NA,
-        Wgt = sum(test.roll[[rt]][Roll + atk.bns < AC]$Hit.wgt),
+        Wgt = sum(test.roll[[rt]][Roll > 1 & Roll + atk.bns < AC]$Hit.wgt),
         Hit.type = "regular"
       ),
       data.table(
@@ -180,7 +169,6 @@ make.attack <- function(
       crit.dt[, `:=`(Dmg = {Dmg + dmg.bns}, Hit.type = "crit. hit")]
     ) %>%
       .[, .(Wgt = sum(Wgt)), by = c("Hit.type", "Dmg")]
-
   } else {
     all.dmg.dt <- rbind(
       data.table(
