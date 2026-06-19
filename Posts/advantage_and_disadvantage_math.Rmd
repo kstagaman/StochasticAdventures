@@ -13,12 +13,10 @@ fig.dir <- create.fig.dir(post.num)
 knitr::opts_chunk$set(results = "asis", echo = FALSE, warning = FALSE, message = FALSE)
 
 # Inputs
-pc.lvl <- 3
-ability.gen <- "Standard Array"
 exmpl.dmg.dice <- "1d8"
-atk.mod <- primary.attack.bonus(level = pc.lvl, ability.gen.method = ability.gen)
-dmg.mod <- primary.attack.mod(level = pc.lvl, ability.gen.method = ability.gen)
-ac.range <- {atk.mod + 1}:{20 + atk.mod}
+atk.mod <- 0
+dmg.mod <- 0
+ac.range <- {atk.mod + 2}:{20 + atk.mod}
 
 # Data
 roll.list <- copy(test.roll)
@@ -85,8 +83,8 @@ make.inline.fig(fig.file, cap.txt)
 
 ```{r expected-dmg-distribution}
 fig.file <- file.path(fig.dir, "damage_dist_by_rollType_and_hitType.png")
-cap.txt <- paste0(
-  "Examples of damage distributions for two raw d20 rolls (5 & 15) by roll type (advantage/normal/disadvantage) and hit type (crit. hit/regular/crit. miss) for a level ", pc.lvl, " character with a weapon that deals ", exmpl.dmg.dice, "+", dmg.mod, " damage."
+cap.txt <- paste(
+  "Examples of damage distributions for two raw d20 rolls (5 & 15) by roll type (advantage/normal/disadvantage) and hit type (crit. hit/regular/crit. miss) for a character with a weapon that deals", exmpl.dmg.dice, "damage (ability bonus excluded)."
 )
 
 plot.dt <- lapply(rollType.lvls, function(type) {
@@ -110,6 +108,7 @@ plot.dt[
 ]
 
 stats.dt <- plot.dt[, .(Mean = weighted.mean(Dmg, Wgt)), by = c("Roll.type", "Raw.roll")]
+unique.dmgs <- plot.dt[Raw.roll %in% c(5, 15)]$Dmg %>% unique() %>% length()
 
 {
   ggplot(plot.dt[Raw.roll %in% c(5, 15)], aes(y = Roll.type, x = Wgt)) + 
@@ -128,7 +127,7 @@ stats.dt <- plot.dt[, .(Mean = weighted.mean(Dmg, Wgt)), by = c("Roll.type", "Ra
       strip.background.y = element_blank(),
     ) +
     labs(x = "Chance", y = "Damage")
-} %>% save.fig(f = fig.file, wd.mult = 1.2, ht.mult = 1.6)
+} %>% save.fig(f = fig.file, wd.mult = 1.2, ht.mult = 1.6 * {unique.dmgs / 17})
 
 make.inline.fig(fig.file, cap.txt)
 ```
@@ -136,7 +135,7 @@ make.inline.fig(fig.file, cap.txt)
 ```{r mean-expected-damage}
 fig.file <- file.path(fig.dir, "mean_expected_dmg_and_diffs_by_rollType.png")
 cap.txt <- paste0(
-  "(A) Mean expected damage for a level ", pc.lvl, " character with a weapon dealing ", exmpl.dmg.dice, "+", dmg.mod, " damage by raw d20 roll and roll type (advantage/normal/disadvantage). (B) Differences in expected mean damage for advantage and disadvantage rolls relative to normal rolls."
+  "(A) Mean expected damage for a character with a weapon dealing ", exmpl.dmg.dice, " damage (ability bonus excluded) by raw d20 roll and roll type (advantage/normal/disadvantage). (B) Differences in expected mean damage for advantage and disadvantage rolls relative to normal rolls."
 )
 
 mean.p <- ggplot(stats.dt, aes(x = Raw.roll, y = Mean, color = Roll.type)) +
@@ -149,7 +148,7 @@ mean.p <- ggplot(stats.dt, aes(x = Raw.roll, y = Mean, color = Roll.type)) +
   scale_y_continuous(breaks = 0:{ceiling(max(stats.dt$Mean))}) +
   labs(
     x = rawRoll.label, 
-    y = paste0("Mean expected damage (1d8+", dmg.mod, ")")
+    y = paste0("Mean expected damage (", exmpl.dmg.dice, ")")
   ) +
   scale_color_manual(name = "Roll type", values = rollType.colors) +
   background_grid(major = "y", minor = "y") +
@@ -176,7 +175,7 @@ diff.p <- melt(diff.dt, id.vars = "Raw.roll", measure.vars = c("Diff.adv.nor", "
   background_grid(major = "y", minor = "y") +
   labs(
     x = rawRoll.label, 
-    y = paste("Difference in\nexpected mean damage (1d8+", dmg.mod, ")\nrelative to a normal roll")
+    y = paste0("Difference in\nexpected mean damage (", exmpl.dmg.dice, ")\nrelative to a normal roll")
   )
 
 {
@@ -188,3 +187,28 @@ diff.p <- melt(diff.dt, id.vars = "Raw.roll", measure.vars = c("Diff.adv.nor", "
 make.inline.fig(fig.file, cap.txt)
 ```
 
+```{r, include=FALSE, eval=FALSE}
+lm.d6.dt <- copy(stats.dt)
+lm.d6.dt[, Roll.type := factor(Roll.type, levels = rollType.lvls[c(2, 1, 3)])]
+lm.d6 <- lm(Mean ~ (I(Raw.roll^2) + Raw.roll) * Roll.type, data = lm.d6.dt)
+
+lm.d8.dt <- copy(stats.dt)
+lm.d8.dt[, Roll.type := factor(Roll.type, levels = rollType.lvls[c(2, 1, 3)])]
+lm.d8 <- lm(Mean ~ (I(Raw.roll^2) + Raw.roll) * Roll.type, data = lm.d8.dt)
+lm.d8$coefficients / 0.05
+
+lm.d10.dt <- copy(stats.dt)
+lm.d10.dt[, Roll.type := factor(Roll.type, levels = rollType.lvls[c(2, 1, 3)])]
+lm.d10 <- lm(Mean ~ (I(Raw.roll^2) + Raw.roll) * Roll.type, data = lm.d10.dt)
+
+cbind(
+  lm.d6$coefficients / {0.05 * 3.5}, 
+  lm.d8$coefficients / {0.05 * 4.5}, 
+  lm.d10$coefficients / {0.05 * 5.5}
+  ) %>% 
+  round(digits = 4) %>% 
+  View()
+
+# diff(stats.dt[Roll.type == "normal"]$Mean)
+# diff(stats.dt[Roll.type == "advantage"]$Mean)
+```
