@@ -188,27 +188,65 @@ make.inline.fig(fig.file, cap.txt)
 ```
 
 ```{r, include=FALSE, eval=FALSE}
-lm.d6.dt <- copy(stats.dt)
+lm.frm <- Mean ~ 1 + (Raw.roll + I(Raw.roll^2)) * Roll.type
+# lm.d6.dt <- copy(stats.dt)
 lm.d6.dt[, Roll.type := factor(Roll.type, levels = rollType.lvls[c(2, 1, 3)])]
-lm.d6 <- lm(Mean ~ (I(Raw.roll^2) + Raw.roll) * Roll.type, data = lm.d6.dt)
+lm.d6 <- lm(lm.frm, data = lm.d6.dt)
 
-lm.d8.dt <- copy(stats.dt)
+# lm.d8.dt <- copy(stats.dt)
 lm.d8.dt[, Roll.type := factor(Roll.type, levels = rollType.lvls[c(2, 1, 3)])]
-lm.d8 <- lm(Mean ~ (I(Raw.roll^2) + Raw.roll) * Roll.type, data = lm.d8.dt)
-lm.d8$coefficients / 0.05
+lm.d8 <- lm(lm.frm, data = lm.d8.dt)
+# lm.d8$coefficients / 0.05
 
-lm.d10.dt <- copy(stats.dt)
+# lm.d10.dt <- copy(stats.dt)
 lm.d10.dt[, Roll.type := factor(Roll.type, levels = rollType.lvls[c(2, 1, 3)])]
-lm.d10 <- lm(Mean ~ (I(Raw.roll^2) + Raw.roll) * Roll.type, data = lm.d10.dt)
+lm.d10 <- lm(lm.frm, data = lm.d10.dt)
+
+# lm.d12.dt <- copy(stats.dt)
+lm.d12.dt[, Roll.type := factor(Roll.type, levels = rollType.lvls[c(2, 1, 3)])]
+lm.d12 <- lm(lm.frm, data = lm.d12.dt)
+
+# lm.2d6.dt <- copy(stats.dt)
+lm.2d6.dt[, Roll.type := factor(Roll.type, levels = rollType.lvls[c(2, 1, 3)])]
+lm.2d6 <- lm(lm.frm, data = lm.2d6.dt)
 
 cbind(
-  lm.d6$coefficients / {0.05 * 3.5}, 
-  lm.d8$coefficients / {0.05 * 4.5}, 
-  lm.d10$coefficients / {0.05 * 5.5}
-  ) %>% 
+  lm.d6$coefficients / {3.5}, 
+  lm.d8$coefficients / {4.5}, 
+  lm.d10$coefficients / {5.5},
+  lm.d12$coefficients / {6.5},
+  lm.2d6$coefficients / {7}
+) %>% 
   round(digits = 4) %>% 
   View()
 
 # diff(stats.dt[Roll.type == "normal"]$Mean)
 # diff(stats.dt[Roll.type == "advantage"]$Mean)
+# 
+# 
+# 
+calc.exp.dmg <- function(die = 8, type = "normal") {
+  die.mean = sum(c(1, die)) / 2
+  switch(
+    type,
+    normal = sapply(2:20, function(r) { 1.1*die.mean - 0.05*die.mean*r }),
+    advantage = sapply(2:20, function(r) { 1.095*die.mean + 0.005*die.mean*r - 0.0025*die.mean*r^2 }),
+    disadvantage = sapply(2:20, function(r) { 1.105*die.mean - 0.105*die.mean*r + 0.0025*die.mean*r^2 })  
+  ) %>% 
+    return()
+}
+
+calc.exp.dmg(type = "advantage")
 ```
+
+$\overline{D}$: Mean expected damage
+
+$\overline{d}$: Mean die roll
+
+$r$: raw d20 roll
+
+$\overline{D}_{normal} = \frac{11}{10}\overline{d} - \frac{1}{20}\overline{d}r$
+
+$\overline{D}_{advantage} = \frac{219}{200}\overline{d} + \frac{1}{200}\overline{d}r - \frac{1}{400}\overline{d}r^2$
+
+$\overline{D}_{disadvantage} = \frac{221}{200}\overline{d} - \frac{21}{200}\overline{d}r + \frac{1}{400}\overline{d}r^2$
