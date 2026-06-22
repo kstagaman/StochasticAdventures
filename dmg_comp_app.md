@@ -4,8 +4,8 @@ title: "Damage Comparison App"
 permalink: /dmg_comp_app/
 ---
 
-<iframe src="https://kstagaman.shinyapps.io/StochasticAdventuresDamageApp/" 
-        width="100%" 
-        height="800px" 
-        style="border:none;">
-</iframe>
+<div style="width: 100%; max-width: 1400px; margin: 0 auto;">
+  <iframe src="https://kstagaman.shinyapps.io/StochasticAdventuresDamageApp/"
+          style="width: 100%; height: 900px; border: none;">
+  </iframe>
+</div>

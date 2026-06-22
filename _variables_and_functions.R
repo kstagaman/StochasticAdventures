@@ -1,5 +1,3 @@
-source("C:/Users/kstag/OneDrive/Documents/GitHub/StochasticAdventures/_packages_and_environments.R")
-
 ### Basic variables ###
 raw.roll <- NULL
 raw.roll$nor <- 1:20
