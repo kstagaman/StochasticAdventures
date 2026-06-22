@@ -4,8 +4,8 @@
 # force max damage for attacks and saves
 # force crits for attacks
 
-source("./packages.R")
-source("./variable_and_functions.R")
+source(here::here("_packages_and_environments.R"))
+source(here("_variables_and_functions.R"))
 
 ### Module ###
 

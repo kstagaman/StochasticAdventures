@@ -1,0 +1,17 @@
+title: "Stochastic Adventures"
+description: "A blog of statistical wanderings"
+theme: minima
+markdown: kramdown
+
+# Enable posts
+collections:
+  posts:
+    output: true
+
+# Where posts live
+defaults:
+  - scope:
+      path: "Posts"
+      type: "posts"
+    values:
+      layout: post

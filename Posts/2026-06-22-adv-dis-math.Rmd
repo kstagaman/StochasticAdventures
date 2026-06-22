@@ -1,0 +1,252 @@
+---
+layout: post
+title: "The Math of Advantage and Disadvantage"
+output: html_document
+---
+
+### Introduction
+
+For my first post here, I wanted to delve a little deeper into the math behind advantage/disadvantage rolls in d20-based table top RPG systems. For a quick reminder, in a d20 system, a player who wants their character to do an action (e.g., attack a foe, find food in the wilderness, or avoid the worst effects of a spell) rolls a 20-sided die (d20), adds relevant modifiers, and compares the result to whatever number defines success in their specific case (e.g., the armor class of the foe or the difficulty level of the feat). In certain circumstances, a character may have an increased or decreased chance of success, reflected by rolling with either advantage or disadvantages, respectively. In these cases, the player rolls two d20's and, for advantage, keeps the higher rolls, and for disadvantage, keeps the lower rolls.
+  
+A rule of thumb that I've heard used is that advantage is roughly akin to adding 5 to your roll, while disadvantage is a -5 penalty. I wanted to explore, first, whether this was generally true, and second, how advantage/disadvantage affects what many (certainly not all) players really care about, expected damage from their attacks. Also, just to note, going forward, instead of writing advantage/disadvantage or some longer form, I will just refer to them collectively as "(dis)advantage".
+
+```{r setup, include=FALSE}
+rmd.file <- basename(this.path::this.path())
+here::i_am(file.path("Posts", rmd.file))
+source(here::here("_packages_and_environments.R"))
+source(here("_variables_and_functions.R"))
+
+# Housekeeping
+post.num <- tracker$posts[rmd.file]$Post.num
+fig.dir <- create.fig.dir(post.num)
+knitr::opts_chunk$set(results = "asis", echo = FALSE, warning = FALSE, message = FALSE)
+
+# Inputs
+exmpl.dmg.dice <- "1d8"
+atk.mod <- 0
+dmg.mod <- 0
+ac.range <- {atk.mod + 2}:{20 + atk.mod}
+
+# Data
+roll.list <- copy(test.roll)
+for (abrev in names(rollType.abrevs)) {
+  roll.list[[abrev]][, Type := rollType.abrevs[abrev]]
+}
+dt <- rbindlist(roll.list)
+dt[, Roll := as.integer(Roll)]
+dt[, Type := factor(Type, levels = rollType.lvls)]
+means <- sapply(raw.roll, mean)
+medians <- sapply(raw.roll, median)
+avg.dt <- data.table(
+  Value = c(means, medians),
+  Average = c(rep("Mean", length(means)), rep("Median", length(medians))),
+  Type = factor(c(rollType.abrevs[names(means)], rollType.abrevs[names(medians)]), levels = rollType.lvls)
+)
+
+# Aesthetics
+rawRoll.label <- "Target AC - Attack Bonus (i.e., raw d20 roll required to hit)"
+img.wd <- 8
+img.ht <- 6
+img.dpi <- 300
+save.fig <- function(plot, f, wd.mult = 1, ht.mult = 1) { 
+  ggsave(
+    plot = plot, 
+    filename = f, 
+    width = {img.wd * wd.mult}, 
+    height = {img.ht * ht.mult}, 
+    dpi = img.dpi
+  )
+}
+```
+
+```{r testing, eval=FALSE}
+library(this.path)
+# print(here())
+# print(this.path())
+print(basename2(this.path()))
+knitr::opts_chunk$set(eval = FALSE)
+```
+
+### (Dis)advantage and the d20 result
+
+First, let's take a look simply at how (dis)advantage affects the outcome of the d20 rolls. With a single fair die, it's a straightforward calculation to know we should expect each number to come 1/20th (or 5%) of the time. When we introduce a second d20, we're now looking at chances out of 400, rather than 20. For advantage, we see we've significantly increased our chances of getting higher rolls. Rather than each number having a 5% chance, the chance of a given roll (r) follows the following formulas: 
+
+$$
+\begin{aligned}
+\text{advantage:} && P(r) &= \frac{2r - 1}{400} \\
+\text{disadvantage:} && P(r) &= \frac{41 - 2r}{400}
+\end{aligned}
+$$
+
+```{r raw-roll}
+fig.file <- file.path(fig.dir, "raw_rolls_by_rollType.png")
+cap.txt <- "Chance of raw d20 result based on rolling with advantage (yellow), normally (black), or with disadvantage (blue). Solid lines indicate means and dashed lines indicate medians."
+{
+  ggplot(dt, aes(x = Roll, y = Hit.wgt)) + 
+    geom_col(aes(fill = Type), position = "dodge", alpha = 0.25, color = NA) +
+    geom_vline(
+      data = avg.dt, 
+      aes(xintercept = Value, color = Type, linetype = Average), 
+      linewidth = 1, 
+      alpha = 0.75
+    ) +
+    scale_y_continuous(expand = c(0, 0), n.breaks = 10, limits = c(0, 0.1)) +
+    scale_x_continuous(breaks = 1:20, expand = c(0, 0)) +
+    scale_fill_manual(name = "Roll type", values = rollType.colors) +
+    scale_color_manual(name = "Roll type", values = rollType.colors) +
+    theme(legend.position = "top") +
+    labs(x = "d20 Roll", y = "Chance") +
+    background_grid(major = "y", minor = "y")
+} %>% save.fig(f = fig.file, ht.mult = 0.8)
+
+make.inline.fig(fig.file, cap.txt)
+```
+
+Looking at average results, we can see that both the mean and median of normal rolls are at 10.5. However, the means for (dis)advantage are much less than ±5 from that. In fact, they are only ±3.325 from the normal mean. The medians are further out, sitting at ±4.5 from the normal median.
+
+I wanted to look at this specifically because for passive checks (where no roll is made, it is simply 10 + the relevant modifiers), adding ±5 for (dis)advantage is quite generous for advantage and quite stingy for disadvantage. It should really be 4 for the sake of whole numbers. It's certainly not a common enough scenario to warrant significant rules changes, but a DM could actually help there players a little by reducing the penalty for disadvantage, especially since passive is already slightly penalized by starting with a round 10, rather than the true mean/median of 10.5.
+
+### The effects of (dis)advantage on damage
+
+One thing this analyis leaves out are the in-game effects of rolling the extremes of the d20: 1 and 20. These rolls, in many d20 systems, result bigger effects such as critical failures and successes. Here, I'm going to talk primarily in the context of combat, so will focus on how these affect potential damage output and refer to them as a "crit. miss" or "crit. hit", respectively, going forward. For the examples, I'm going to use a d8 as the damage die, and I'm going to ignore any modifiers to the attack or damage rolls. This should make things more generalizable. For example, by ignoring specific ACs and attack modifiers, we can say what the expected damage should be based on the raw d20 roll target required to hit. So, a character with a +2 attack modifier targeting a foe with a 12 AC and a character with a +4 attack modifier targeting a foe with a 16 AC would need the same d20 target roll: 12. And the expected damage (assuming they're using the same weapon), would be the same. 
+
+To start, I want to show some example distributions of damage output. I'm just going to show the distributions when a successful raw roll is a 5 and a 15, as the full set of graphs is much too complicated. There's still a lot going on here, but there are a few key takeaways.
+
+```{r expected-dmg-distribution}
+fig.file <- file.path(fig.dir, "damage_dist_by_rollType_and_hitType.png")
+cap.txt <- paste(
+  "Examples of damage distributions for two raw d20 roll targets (5 & 15) by roll type (advantage/normal/disadvantage) and hit type (crit. hit/regular/crit. miss) for a character with a weapon that deals", exmpl.dmg.dice, "damage (ability bonus excluded). Expected damage is on the y-axis, and chance to get that damage is on the x-axis."
+)
+
+plot.dt <- lapply(rollType.lvls, function(type) {
+  lapply(ac.range, function(ac) {
+    res.dt <- make.attack(
+      roll.type = type, 
+      AC = ac, 
+      atk.bns = atk.mod, 
+      dmg.dice = exmpl.dmg.dice, 
+      dmg.bns = dmg.mod, 
+      by.hitType = TRUE
+    )
+    res.dt[, `:=`(Raw.roll = {ac - atk.mod}, Roll.type = type)]
+    return(res.dt)
+  }) %>% rbindlist()
+}) %>% rbindlist()
+plot.dt[
+  , `:=`(
+    Hit.type = factor(Hit.type, levels = hitType.lvls),
+    Roll.type = factor(Roll.type, levels = rollType.lvls))
+]
+
+stats.dt <- plot.dt[, .(Mean = weighted.mean(Dmg, Wgt)), by = c("Roll.type", "Raw.roll")]
+unique.dmgs <- plot.dt[Raw.roll %in% c(5, 15)]$Dmg %>% unique() %>% length()
+
+{
+  ggplot(plot.dt[Raw.roll %in% c(5, 15)], aes(y = Roll.type, x = Wgt)) + 
+    geom_col(aes(fill = Hit.type, color = Roll.type), linewidth = 0.2) +
+    facet_grid(Dmg ~ Raw.roll, as.table = FALSE, switch = "y") +
+    scale_fill_manual(name = "Hit type", values = hitType.colors) +
+    scale_color_manual(name = "Roll type", values = rollType.colors) +
+    scale_y_discrete(limits = rev) +
+    scale_x_continuous(
+      n.breaks = 8,
+      sec.axis = sec_axis(~ . , name = rawRoll.label, breaks = NULL, labels = NULL)
+    ) +
+    theme(
+      axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5),
+      axis.text.y = element_blank(), 
+      axis.ticks.y = element_blank(), 
+      axis.line.y = element_blank(),
+      strip.text.y.left = element_text(angle = 0, size = get_theme()$axis.text@size),
+      strip.background.y = element_blank(),
+    ) +
+    labs(x = "Chance", y = "Damage") +
+    background_grid(major = "x", minor = "x")
+} %>% save.fig(f = fig.file, wd.mult = 1.2, ht.mult = 1.6 * {unique.dmgs / 17})
+
+make.inline.fig(fig.file, cap.txt)
+```
+
+First, looking at the misses (0 damage), you can see our crit. miss chance is nearly doubled for disadvantage relative to normal rolls, which we expect from figure 1, and this is true regardless of the target for a successful roll. Secondly, the relationship between advantage and disadvantage for chance to miss is not static. When a 5 is all you need to hit, the chance to miss with advantage is 4% while with disadvantage it's 36%, a difference of 32%. However, when you need a 15 to hit, the chance of missing is 49% with advantage and 91% with disadvantage, a difference of 42%. That's an appreciably bigger gap.
+
+Let's simplify things a little bit and just look at the mean expected damage across raw d20 roll targets. I've omitted 1 as a target d20 roll because mathematically, it's identical to 2 (since a 1 is a failure no matter what a player still needs to roll a 2 to hit).  
+
+```{r mean-expected-damage}
+fig.file <- file.path(fig.dir, "mean_expected_dmg_and_diffs_by_rollType.png")
+cap.txt <- paste0(
+  "(A) Mean expected damage for a character with a weapon dealing ", exmpl.dmg.dice, " damage (ability bonus excluded) by raw d20 roll and roll type (advantage/normal/disadvantage). (B) Differences in expected mean damage for advantage and disadvantage rolls relative to normal rolls."
+)
+
+mean.p <- ggplot(stats.dt, aes(x = Raw.roll, y = Mean, color = Roll.type)) +
+  geom_line() +
+  geom_point() +
+  scale_x_continuous(
+    n.breaks = length(unique(stats.dt$Raw.roll)), 
+    expand = expansion(mult = 0.02, add = 0)
+  ) +
+  scale_y_continuous(breaks = 0:{ceiling(max(stats.dt$Mean))}) +
+  labs(
+    x = rawRoll.label, 
+    y = paste0("Mean expected damage (", exmpl.dmg.dice, ")")
+  ) +
+  scale_color_manual(name = "Roll type", values = rollType.colors) +
+  background_grid(major = "y", minor = "y") +
+  theme(axis.title.x = element_blank())
+
+diff.dt <- merge(
+  stats.dt[Roll.type == "advantage", -1], 
+  stats.dt[Roll.type == "normal", -1], 
+  by = "Raw.roll"
+) %>% 
+  merge(stats.dt[Roll.type == "disadvantage", -1], by = "Raw.roll") %>% 
+  set_names(c("Raw.roll", "Mean.adv", "Mean.nor", "Mean.dis"))
+
+diff.dt[, `:=`(Diff.adv.nor = Mean.adv - Mean.nor, Diff.dis.nor = Mean.dis - Mean.nor)]
+
+diff.p <- melt(diff.dt, id.vars = "Raw.roll", measure.vars = c("Diff.adv.nor", "Diff.dis.nor")) %>% 
+  ggplot(aes(x = Raw.roll, y = value, fill = variable)) +
+  geom_col(show.legend = FALSE) +
+  scale_x_continuous(n.breaks = length(unique(stats.dt$Raw.roll)), expand = expansion(0, 0)) +
+  scale_fill_manual(
+    name = "Roll type", 
+    labels = c("advantage", "disadvantage"), 
+    values = unname(rollType.colors[c(1, 3)])) +
+  background_grid(major = "y", minor = "y") +
+  labs(
+    x = rawRoll.label, 
+    y = paste0("Difference in\nexpected mean damage (", exmpl.dmg.dice, ")\nrelative to a normal roll")
+  )
+
+{
+  {mean.p / diff.p} + 
+    plot_annotation(tag_levels = "A") +
+    plot_layout(heights = c(2, 1))
+} %>% save.fig(f = fig.file, ht.mult = 1.5)
+
+make.inline.fig(fig.file, cap.txt)
+```
+
+As one might expect, for a normal (straight) d20 roll, the expected damage goes down linearly as the required d20 target increases. In fact, it decreases by exactly 5% of the mean dice roll (in this case 5% of 4.5), which makes sense as the chance of hitting the target roll decreases by 5% for each increase of one. 
+
+The (dis)advantage rolls, however, do not have a linear relationship with mean expected damage. Rolling with advantage means not only the expected damage is greater than rolling normally, but this increase starts falling off slowly but then accelerates. For disadvantage, it's the converse. This means that the expected damage gain or loss from (dis)advantage is not static across d20 targets. The lower figure highlights this, showing that the greatest boons from advantage and banes from disadvantage (damage-wise) occur when the target d20 roll is right in the middle (10-12).
+
+We can generalize beyond d8 damage dice, and determine the mean expected damage output for any die based on the require d20 target to hit as follows:
+
+<div style="max-width: 400px;">
+
+| Variable | Meaning |
+| :---: | :--- |
+| $\overline{D}$ | Mean expected damage from a single attack |
+| $\overline{d}$ | Mean damage die roll (e.g., 3.5 for 1d6, 5.5 for 1d10, 7.0 for 2d6) |
+| $r$ | raw d20 roll (no modifiers) |
+
+</div>
+
+$$
+\begin{aligned}
+\overline{D}_{normal} &= \frac{11}{10}\overline{d} - \frac{1}{20}\overline{d}r \\
+\overline{D}_{advantage} &= \frac{219}{200}\overline{d} + \frac{1}{200}\overline{d}r - \frac{1}{400}\overline{d}r^2 \\
+\overline{D}_{disadvantage} &= \frac{221}{200}\overline{d} - \frac{21}{200}\overline{d}r + \frac{1}{400}\overline{d}r^2
+\end{aligned}
+$$
+
