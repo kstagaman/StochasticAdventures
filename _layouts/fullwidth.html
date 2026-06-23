@@ -3,12 +3,17 @@ layout: default
 ---
 
 <style>
-  .page-content {
+  /* Override Minima's width constraints */
+  .page-content,
+  .wrapper,
+  .post-content {
     max-width: 100% !important;
+    width: 100% !important;
     padding: 0 !important;
     margin: 0 !important;
   }
 </style>
+
 
 <div style="width: 100%; max-width: 1600px; margin: 0 auto;">
   {{ content }}
