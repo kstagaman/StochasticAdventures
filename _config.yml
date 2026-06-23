@@ -19,5 +19,3 @@ defaults:
 exclude:
   - "*.Rmd"
   - "Posts/*.Rmd"
-
-
