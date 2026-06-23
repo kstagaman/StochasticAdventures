@@ -15,3 +15,7 @@ defaults:
       type: "posts"
     values:
       layout: post
+
+exclude:
+  - "*.Rmd"
+  - "Posts/*.Rmd"

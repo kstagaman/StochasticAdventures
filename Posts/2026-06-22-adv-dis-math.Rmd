@@ -1,5 +1,4 @@
 ---
-title: "The Math of Advantage and Disadvantage"
 output: html_document
 ---
 
