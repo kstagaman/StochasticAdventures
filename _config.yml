@@ -1,6 +1,6 @@
 title: "Stochastic Adventures"
 description: "A blog of statistical wanderings"
-theme: minima
+theme: slate
 markdown: kramdown
 
 # Enable posts
