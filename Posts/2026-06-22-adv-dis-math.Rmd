@@ -240,11 +240,12 @@ We can generalize beyond d8 damage dice, and determine the mean expected damage 
 
 </div>
 
+
 $$
 \begin{aligned}
-\overline{D}_{normal} &= \frac{11}{10}\overline{d} - \frac{1}{20}\overline{d}r \\
-\overline{D}_{advantage} &= \frac{219}{200}\overline{d} + \frac{1}{200}\overline{d}r - \frac{1}{400}\overline{d}r^2 \\
-\overline{D}_{disadvantage} &= \frac{221}{200}\overline{d} - \frac{21}{200}\overline{d}r + \frac{1}{400}\overline{d}r^2
+\overline{D}_{normal} &= \overline{d} \times \frac{22-r}{20} \\
+\overline{D}_{advantage} &= \overline{d} \times \frac{438 + 2r - r^2}{400} \\
+\overline{D}_{disadvantage} &= \overline{d} \times \frac{442-42r+r^2}{400}
 \end{aligned}
 $$
 

@@ -32,18 +32,12 @@ actionUI <- function(id, default_type = "attack") {
     conditionalPanel(
       "input.actType == 'attack'",
       ns = ns,
-      selectInput(ns("rollType"),
-                  label = "Roll type",
-                  choices = c("normal", "advantage", "disadvantage")
-      )
+      selectInput(ns("rollType"), label = "Roll type", choices = c("normal", "advantage", "disadvantage"))
     ),
     conditionalPanel(
       "input.actType == 'save'",
       ns = ns,
-      selectInput(ns("rollType"),
-                  label = "Target's roll type",
-                  choices = c("normal", "advantage", "disadvantage")
-      )
+      selectInput(ns("rollType"), label = "Target's roll type", choices = c("normal", "advantage", "disadvantage"))
     ),
     conditionalPanel(
       "input.actType == 'attack'",
@@ -149,10 +143,7 @@ ui <- page_sidebar(
         ),
         plotOutput("distPlot", height = "100%", fill = TRUE)
       ),
-      card(
-        card_header(uiOutput("tableHeader")),
-        tableOutput("clickTable")
-      )
+      card(card_header(uiOutput("tableHeader")), tableOutput("clickTable"))
     )
   )
 )
