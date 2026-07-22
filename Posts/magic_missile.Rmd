@@ -1,0 +1,37 @@
+---
+output: html_document
+---
+
+<!-- once the html file is generated, make sure header looks like this:
+---
+layout: post
+title: "The Math of Advantage and Disadvantage"
+---
+--->
+
+### Introduction
+
+
+```{r setup, include=FALSE}
+rmd.file <- basename(this.path::this.path())
+here::i_am(file.path("Posts", rmd.file))
+source(here::here("_packages_and_environments.R"))
+source(here("_variables_and_functions.R"))
+
+# Housekeeping
+post.num <- tracker$posts[rmd.file]$Post.num
+fig.dir <- create.fig.dir(post.num)
+knitr::opts_chunk$set(results = "asis", echo = FALSE, warning = FALSE, message = FALSE)
+
+# Inputs
+
+
+# Data
+
+
+# Aesthetics
+
+```
+
+
+

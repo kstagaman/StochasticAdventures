@@ -61,6 +61,19 @@ hitType.colors <- brewer.pal("Set1", n = 9)[c(3, 9, 1)]
 names(hitType.colors) = hitType.lvls
 
 ### Functions ###
+save.fig <- function(plot, f, wd.mult = 1, ht.mult = 1) {
+  img.wd <- 8
+  img.ht <- 6
+  img.dpi <- 300
+  ggsave(
+    plot = plot,
+    filename = f,
+    width = {img.wd * wd.mult},
+    height = {img.ht * ht.mult},
+    dpi = img.dpi
+  )
+}
+
 rep.dmg <- function(dt, rep.num = 1) {
   dt1 <- copy(dt)
   for (i in 1:rep.num) {
@@ -111,7 +124,7 @@ dmg.dist <- function(Ns = c(1), Ss = c(6)) {
   list(Strt = dt1, Crit = dt2) %>% return()
 }
 
-parse.dmg.dice <- function(dmg.str) {
+parse.dmg.dice <- function(dmg.str) { # fix this to handle integers
   r.names <- c("N", "S")
   if (str_detect(dmg.str,"\\+")) {
     dmg.strs <- str_split(dmg.str, " *\\+ *")[[1]]

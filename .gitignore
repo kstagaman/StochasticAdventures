@@ -53,3 +53,4 @@ rsconnect/
 Temp/*
 Data/*
 *.rda
+Templates/*
