@@ -257,6 +257,7 @@ $$
 \overline{D}_{disadvantage} &= \overline{d} \times \frac{442-42r+r^2}{400}
 \end{aligned}
 $$
+
 ### Conclusions
 
 I started this particular post because I wanted to have a more complete understanding of how a core mechanic like (dis)advantage actually affects outcomes at the table. It certainly dispelled for me the notion that I can be though of as a static bonus/penalty at all, and highlighted that its effects are variable over d20 targets. Certainly, very few players will need or want to use these formulas at the table, but hopefully this overview can help them make decisions when they can give themselves or compatriots advantage, such as with heroic inspiration or spells like Faerie Fire.
